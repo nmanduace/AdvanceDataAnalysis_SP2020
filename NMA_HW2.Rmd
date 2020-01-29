@@ -1,0 +1,202 @@
+---
+title: "Homework II"
+author: "Nicandro Mandujano Acevedo"
+date: "1/26/2020"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+##### 1. Import class one survey data from Github site (The dataset called "Class 1 Survey Spring 2020.csv" is located in the class one folder), calling the R dataframe that you create _C1survey_
+
+```{r}
+#Loading packages to be used throughout sessions
+library(knitr)
+library(foreign)
+library(haven)
+library(readr)
+library(pastecs)
+library(car)
+library(dplyr)
+
+
+#Importing the dataset using read_csv instead of read.csv
+C1survey <-
+ read_csv("https://raw.githubusercontent.com/kijohnson/ADA_Spring_2020/master/Class%201/Class%201%20Survey%20Spring%202020.csv")
+
+##Don't forget to put in quatations the link
+
+```
++ Dataset was sucessfully imported as _C1survey_
+
+##### 2. Determine: a. the number of observations (i.e. the number of people whol filled out the survey) and b. the number of variables in the dataframe
+
+1. To determine the number of students that filled out the survey, look at the The environment of R:
+  + Under the name of imported dataset look for "observations" and "variables"
+    + Observations: 43
+    + Variables: 27
+
+2. Use code to print out the number of observations and variables
+  + Code is: dim( _name of dataset_ )
+    + In this case: _dim(C1survey)_
+    + `r dim(C1survey)`
+  
+##### 3. Generated and display a list of column names, calling your list _varlist_
+
+```{r, results='hide'}
+
+# Will generate a dataframe with the label names of the variables found in"C1survey"
+varlist <- names(C1survey)
+
+#Prints the dataframe created above
+print(varlist)
+```
+
++ WHile the names of the variables are very descriptive, many of them are long. This could interfere with being able to created table, or quickly undestand what that variable is telling.
+
+##### 4. a. Rename the column variables to something shorted and that is descriptive of what the variable is about (for example _like_dogs_ for the _Do you like dogs?_ question variable) and b. write code to display that they are renamed.
+
+```{r, results='hide'}
+# Replace the current variable names in "C1survey"
+names(C1survey)<- c("ID", "Cats", "Dogs", "Deserted_Item", "Slogan", "Fav_Weekday", "Functionality", "Fav_Food", "Fav_Drink", "Fav_Season",
+                       "Fav_Month", "Hobby", "Program", "Specialization", "Software_Use", "R_Experience", "Coding_Comfortability",
+                       "Coding_Experience", "Learning_Hopes", "Interest_Area", "Fav_Number", "Birth_Day", "Birth_Month", "Country", "State",
+                       "City", "Education")
+# Create a dataframe of the new variable names of "C1survey" to double check work, and print for a quick look
+RenameVarList<- names(C1survey)
+
+print(RenameVarList)
+
+```
+
+##### 5. Write code to determine and display the number of factor, interger, numerical, and character variables there are in the _C1survey_ dataset
+
+There are only two types of variables in the dataset, _"Character"_ and _"Factor"_. _"Character"_ based variables are the most common with 23, while _"Factor"_ based varaibles only have 4. Below is a table with the information.
+```{r}
+# Code to create table to display what are the different types of variables found in "C1survey"
+table(sapply(C1survey, class))
+```
+
+##### 6. a. Using code, check the _bday_ and _bmonth_ variables for any unusual or missing values. If you find any, b. describre what you will do with the unusual values in a comment before or immediately followign the code that does it, and c. after you have cleaned up any unusual values, find the median _bday_ and _bmonth_
+
+```{r, results='hide'}
+#Code to see the responses entered for the Birth_Month and Birth_Day variable
+list(C1survey$Birth_Month)
+list(C1survey$Birth_Day)
+
+# Code to determine what class the variables are to determine how unusual values will be handled
+class(C1survey$Birth_Month)
+class(C1survey$Birth_Day)
+```
+
++ For the month variable there are four responses that need to be changed. Below are what they are and what they are to be recoded as:
+  + "April" -> 4
+  + "June 7-91" -> 6
+  + "June" -> 6
+  + "report 12" -> 12 *this is an assumption that the person inputting the information did mean the month 12
+  
++ For the day variable there are two responses that need to be changed. Below are what they are and what they are to be recoded as:
+  + "7-Jun" -> 6
+  + "report 19" -> 19 *this is an assumption that the person inputting the information did mean the day 19
+
+```{r, results='hide'}
+#Steps for the recoding of month variable
+C1survey$Birth_Month[c(35, 43, 47, 48)] <- c(4,6,6,12)
+list(C1survey$Birth_Month)
+class(C1survey$Birth_Month)
+#Since the variable is "character" need to change to numeric
+C1survey$Birth_Month <- as.numeric(C1survey$Birth_Month)
+
+#Steps for the recoding of day variable
+C1survey$Birth_Day <- as.numeric(C1survey$Birth_Day)
+C1survey$Birth_Day[c(43, 48)] <- c(6,19)
+list(C1survey$Birth_Day)
+```
+```{r, results='hide'}
+#findinding the median and creating a table
+median <- rbind(median(C1survey$Birth_Day), median(C1survey$Birth_Month))
+label1 <- rbind("Birth Day Median", "Birth Month Median")
+
+MedianTable <- cbind(label1, median)
+```
+```{r}
+print(MedianTable)
+```
+
+After cleaning the variables, the median birth month is `r median(C1survey$Birth_Month)`, which means June. Meanwhile the median birth day is `r median(C1survey$Birth_Day)`.
+
+##### 7. a. Create a new variable called _bseason_ that gives the seasin according to Northern Meteorological season in which respondents were born (winter=12/1 to 2/29, spring=3/1 to 5/31, summer=6/1 to 8/31, fall=9/1 to 11/30). b. Using the table function, print a table of _"Seasons"_ in the columns and _"bmonths"_ in the rows that allows you to check that the coding is correct. c. Sum the columns using the _addmargins_ funstion to answer the question of how many classmates were born in each season?
+```{r, results='hide'}
+#Relabel the birth month to represent a season in new variable "bseason" from the "Birth_Month" variable
+C1survey$bseason [C1survey$Birth_Month >=3 & C1survey$Birth_Month<=5] <- "Spring"
+C1survey$bseason [C1survey$Birth_Month >=6 & C1survey$Birth_Month<=8] <- "Summer"
+C1survey$bseason [C1survey$Birth_Month >=9 & C1survey$Birth_Month<=11] <- "Fall"
+C1survey$bseason [C1survey$Birth_Month ==12 | C1survey$Birth_Month<=2] <- "Winter"
+```
+```{r, echo=TRUE}
+addmargins(table(C1survey$Birth_Month, C1survey$bseason))
+```
+
+The season with the highest number of students in the class being born was Summer, with 15 students. The season with the second highest number was Winter with 13 students. Spring and Fall both had the same number of students being born during those seasons with 10 students each.
+
+##### 8. Pick your favorite variable to analyze, come up with a question you want to answer with that variable, generate the code, and provide an answer to your question. Describe what you did using comments (1.e #'s)
+
++ _What is the most common category of hobbies practiced by students in the class?_
+
+```{r, results='hide'}
+# First look at what are the different hobbies listed by the students
+list(C1survey$Hobby)
+
+#Based on the answers, there appears to be the following categories:
+# 1 - Reading; 2 - Sports; 3 - Art; 4 - Cooking; 5 - Games; 6 - Miscel
+# Category 3 includes all kind of arts, from music, playing instruments to writing
+# The observation with "cooking, reading, listening to music" will be coded as category 6 since it can encompass multiple categories
+# Other observations as category 6 are "Daze", "learning new languages/cultures", "listening to podcasts", "Sleeping", "gardening" and "sneaker collection"
+# "Working out" was coded as category 2
+```
+
+The different categories of Hobbies practices by the class are as follows:
+
+1. Reading
+2. Sports
+3. Art
+4. Cooking
+5. Games
+6. Miscel
+
+```{r, results='hide'}
+# recode code
+C1survey$Hob_Cat <- recode(C1survey$Hobby, "Reading"= 1, "Sneaker collection" = 6, "Dancing" = 3, "Writing" = 3,
+                           "gardening" = 6, "listening to music" = 3, "Running" = 2, "Playing board games" = 5,
+                           "sing" = 3, "Video Game" = 5, "singing" = 3, "Sleeping" = 6, "Bicycling" = 2, "Cooking" = 4,
+                           "sports" = 2, "Piano" = 3, "running" = 2, "cooking, reading, listening to music" = 6, "Baking" = 4,
+                           "bike riding" = 2, "working out" = 2, "playing violin" = 3, "Playing Tennis" = 2, "cooking" = 4,
+                           "Skateboarding" = 2, "ultimate Frisbee" = 2, "painting" = 3, "Daze" = 6, "boxing" = 2, "climbing" = 2,
+                           "Playing basketball" = 2, "learning new languages/culture" = 6, "listening to podcasts" = 6, "Doodling" = 3,
+                           "Painting" = 3, "Playing the piano" = 3, "reading" = 1)
+
+list(C1survey$Hob_Cat) # To check for mistakes
+# Based on this "Listening music", "learning new languages/cultures", "Singing"
+# New code (learning new languages/cultures was only missing the "s")
+C1survey$Hob_Cat1 <- recode(C1survey$Hobby, "Reading"= 1, "Sneaker collection" = 6, "Dancing" = 3, "Writing" = 3,
+                           "gardening" = 6, "listening to music" = 3, "Running" = 2, "Playing board games" = 5,
+                           "sing" = 3, "Video Game" = 5, "singing" = 3, "Sleeping" = 6, "Bicycling" = 2, "Cooking" = 4,
+                           "sports" = 2, "Piano" = 3, "running" = 2, "cooking, reading, listening to music" = 6, "Baking" = 4,
+                           "bike riding" = 2, "working out" = 2, "playing violin" = 3, "Playing Tennis" = 2, "cooking" = 4,
+                           "Skateboarding" = 2, "ultimate Frisbee" = 2, "painting" = 3, "Daze" = 6, "boxing" = 2, "climbing" = 2,
+                           "Playing basketball" = 2, "learning new languages/cultures" = 6, "listening to podcasts" = 6, "Doodling" = 3,
+                           "Painting" = 3, "Playing the piano" = 3, "reading" = 1, "Listening music" = 3, "Singing" = 3)
+
+list(C1survey$Hob_Cat1)
+```
+```{r}
+table(C1survey$Hob_Cat1)
+```
+
+The most popular hobby category for students in ADA was sports (14), followed by art (13). Both the miscel and reading categories are practiced by seven students each. The cooking category is practiced by 5, while the games category got the lowest number of students (2).
+
+![Brazil vs. Argentina](/Users/nicandromandujanoacevedo/Documents/Advance Data Analysis/Volley.jpg)
